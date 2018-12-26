@@ -1,0 +1,112 @@
+---
+title: "Lab4"
+author: "Andrei Kataev"
+date: '26 декабря 2018 г '
+output: html_document
+---
+
+Пользуясь примером из лекции файл (5.0.R) проанализируйте данные о возрасте и физ. характеристиках моллюсков
+https://archive.ics.uci.edu/ml/datasets/abalone
+```{r}
+data <- read.csv("https://archive.ics.uci.edu/ml/machine-learning-databases/abalone/abalone.data", header=TRUE, sep=",")
+summary(data)
+colnames(data)
+colnames(data) <- c("sex", "length", "diameter", "height", 
+                "whole_weight", "shucked_weight",
+                "viscera_weight", "shell_weight", "rings")
+
+colnames(data)
+data$sex <- factor(c("Female", "Infant", "Male")[data$sex])
+par(mfrow=c(1,3)) 
+hist(data$diameter, main = "Диаметр моллюска, мм")
+hist(data$height, main = "Высота моллюска, мм")
+hist(data$whole_weight, main = "Полный вес моллюска, гр")
+```
+
+Видим ассиметрию https://en.wikipedia.org/wiki/Skewness и выбросы (от них нужно избавиться).
+
+Визулизируем возможные зависимости.
+```{r}
+par(mfrow=c(1,2)) 
+plot(data$diameter, data$whole_weight,'p',main = "Зависимость веса от диаметра ")
+plot(data$height, data$whole_weight,'p',main = "Зависимость веса от высоты")
+```
+
+Хорошо видна зависимость, нужно её исследовать. Построить линейные модели при помощи функции lm, посмотреть их характеристики.
+```{r}
+#Линейная модель зависимости веса от диаметра моллюска
+linear.model.weight.from.diameter<-lm(whole_weight~diameter,data)
+linear.model.weight.from.diameter
+summary(linear.model.weight.from.diameter)
+plot(linear.model.weight.from.diameter)
+```
+
+```{r}
+#Линейная модель зависимости веса от высоты моллюска
+linear.model.weight.from.height<-lm(whole_weight~height,data)
+linear.model.weight.from.height
+summary(linear.model.weight.from.height)
+plot(linear.model.weight.from.height)
+```
+
+Избавиться от выборосов, построить ещё модели и проверить их.
+```{r}
+#Определение отклонений для линейной модели зависимости веса от диаметра моллюска
+data.noout<-data[data$height<0.4&data$height>0.03&data$diameter>0.1,]
+linear.model.weight.from.diameter.deviation<-lm(whole_weight~diameter,data.noout)
+linear.model.weight.from.diameter.deviation
+summary(linear.model.weight.from.diameter.deviation)
+plot(linear.model.weight.from.diameter.deviation)
+```
+
+```{r}
+#Определение отклонений для линейной модели зависимости веса от диаметра моллюска
+data.noout<-data[data$height<0.4&data$height>0.05,]
+linear.model.weight.from.height.deviation<-lm(whole_weight~height,data.noout)
+linear.model.weight.from.height.deviation
+summary(linear.model.weight.from.height.deviation)
+plot(linear.model.weight.from.height.deviation)
+```
+
+```{r}
+#Линейная модель зависимости веса от высоты и диаметра моллюска
+linear.model.weight.from.height.and.diameter<-lm(whole_weight~+height+diameter,data.noout)
+linear.model.weight.from.height.and.diameter
+summary(linear.model.weight.from.height.and.diameter)
+plot(linear.model.weight.from.height.and.diameter)
+```
+
+```{r}
+#Линейная модель физических характеристик моллюсков всё в одном 
+linear.model.all<-lm(whole_weight~.-shucked_weight-viscera_weight-shell_weight,data.noout)
+linear.model.all
+summary(linear.model.all)
+plot(linear.model.all)
+```
+
+Разделить массив данных на 2 случайные части.
+```{r}
+odds <- seq(1, nrow(data.noout), by=2)
+data.in <- data.noout[odds,]
+data.out <- data.noout[-odds,]
+```
+
+Подогнать модель по первой части.
+```{r}
+linear.model.all.in<-lm(whole_weight~.-shucked_weight-viscera_weight-shell_weight,data=data.in)
+linear.model.all.in
+summary(linear.model.all.in)
+plot(linear.model.all.in)
+```
+
+Спрогнозировать (функция predict) значения во второй части.
+```{r}
+data.predict.out <- predict (linear.model.all.in, data.out)
+plot (data.out$whole_weight, data.predict.out)
+```
+
+Проверить качество прогноза.
+```{r}
+cor (data.out$whole_weight, data.predict.out)
+```
+Прогноз получился качественным, т.к. полученное значени е коэффициента корреляции близко к 1.
