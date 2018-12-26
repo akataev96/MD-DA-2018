@@ -1,0 +1,148 @@
+---
+title: "Lab5"
+author: "Andrei Kataev"
+date: '26 декабря 2018 г '
+output: html_document
+---
+
+#Дисперсионный анализ
+
+Загрузим данные (требуется установить Рабочую папку с помощью setwd) или указать полный путь
+```{r}
+data = read.csv("c:/diet.csv",row.names=1)
+summary
+```
+
+Ознакомимся со структурой и переименуем колонки, как нам удобно
+https://www.sheffield.ac.uk/polopoly_fs/1.547015!/file/Diet_data_description.docx
+https://www.sheffield.ac.uk/mash/data
+```{r}
+colnames(data) <- c("gender", "age", "height", "initial.weight", 
+                    "diet.type", "final.weight")
+data$diet.type <- factor(c("A", "B", "C")[data$diet.type])
+```
+
+Добавим новую колонку - Похудение
+```{r}
+data$weight.loss = data$initial.weight - data$final.weight
+```
+
+Проанализиуем есть ли различия по типам диет
+```{r}
+boxplot(weight.loss~diet.type,data=data,col="light gray",
+        ylab = "Weight loss (kg)", xlab = "Diet type")
+abline(h=0,col="green")
+```
+
+проверим сбалансированные ли данные
+```{r}
+table(data$diet.type)
+```
+
+График групповых средних
+```{r}
+library(gplots) #библиотека устанавлевается с помощью install.packages
+plotmeans(weight.loss ~ diet.type, data=data)
+aggregate(data$weight.loss, by = list(data$diet.type), FUN=sd)
+```
+
+Для подгонки ANOVA модели используем функцию aov, частный случай линейной модели lm
+тест на межгрупповые различия
+```{r}
+fit <- aov(weight.loss ~ diet.type, data=data)
+summary(fit)
+```
+
+попарные различия между средними значениями для всех групп
+```{r}
+TukeyHSD(fit)
+```
+
+Tukey honest significant differences test)
+```{r}
+library(multcomp)
+par(mar=c(5,4,6,2))
+tuk <- glht(fit, linfct=mcp(diet.type="Tukey"))
+plot(cld(tuk, level=.05),col="lightgrey")
+```
+
+#Задание
+Добавить проверку на выборы и избавиться от них
+```{r}
+plot(data$weight.loss,data$diet.type)
+data.noout<-data[data$weight.loss<=8,]
+```
+
+повторно проверсти все тесты и сравнить результаты с выбросами и без
+```{r}
+boxplot(weight.loss~diet.type,data=data.noout,col="light gray",
+        ylab = "Weight loss (kg)", xlab = "Diet type")
+abline(h=0,col="green")
+```
+
+График групповых средних
+```{r}
+plotmeans(weight.loss ~ diet.type, data=data.noout)
+aggregate(data$weight.loss, by = list(data$diet.type), FUN=sd)
+```
+
+Для подгонки ANOVA модели используем функцию aov, частный случай линейной модели lm
+тест на межгрупповые различия
+```{r}
+fit.noout <- aov(weight.loss ~ diet.type, data=data.noout)
+summary(fit.noout)
+```
+
+Попарные различия между средними значениями для всех групп
+```{r}
+TukeyHSD(fit.noout)
+```
+
+Tukey honest significant differences test)
+```{r}
+par(mar=c(5,4,6,2))
+tuk <- glht(fit.noout, linfct=mcp(diet.type="Tukey"))
+plot(cld(tuk, level=.05),col="lightgrey")
+```
+
+После удаления выбросов самой лучшей диетой так и осталась диета С, а самой худшей диетой вместо диеты В стала диета А.
+
+Открыть документ https://www.sheffield.ac.uk/polopoly_fs/1.547015!/file/Diet_data_description.docx
+и попытаться выполнить задания из него
+```{r}
+data.noout.with.gender<-data[!is.na(data$gender),]
+data.noout.with.gender$gender <- factor(c("Female","Male")[as.ordered(data.noout.with.gender$gender)])
+```
+
+Effect of diet and gender on weight lost
+```{r}
+boxplot(weight.loss~gender,data=data.noout.with.gender,col="light gray",
+        ylab = "Weight loss (kg)", xlab = "Gender")
+abline(h=0,col="green")
+```
+
+График групповых средних
+```{r}
+plotmeans(weight.loss ~ gender, data=data.noout.with.gender)
+aggregate(data.noout.with.gender$weight.loss, by = list(data.noout.with.gender$gender), FUN=sd)
+```
+
+Для подгонки ANOVA модели используем функцию aov, частный случай линейной модели lm тест на межгрупповые различия
+```{r}
+fit.noout <- aov(weight.loss ~ gender, data=data.noout.with.gender)
+summary(fit.noout)
+```
+
+Попарные различия между средними значениями для всех групп
+```{r}
+TukeyHSD(fit.noout)
+```
+
+Tukey honest significant differences test)
+```{r}
+par(mar=c(5,4,6,2))
+tuk <- glht(fit.noout, linfct=mcp(gender="Tukey"))
+plot(cld(tuk, level=.05),col="lightgrey")
+```
+
+Можно сказать, что потеря веса не зависит от пола 
